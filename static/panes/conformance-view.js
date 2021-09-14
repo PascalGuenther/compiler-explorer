@@ -33,6 +33,7 @@ var Components = require('../components');
 var Libraries = require('../libs-widget-ext');
 var CompilerPicker = require('../compiler-picker');
 var utils = require('../utils');
+var LibUtils = require('../lib-utils').LibUtils;
 
 function Conformance(hub, container, state) {
     this.hub = hub;
@@ -194,7 +195,6 @@ Conformance.prototype.addCompilerPicker = function (config) {
         this.compileChild(newCompilerEntry);
     }, this);
 
-    var compilerPickerNode = newSelector[0].querySelector('select.compiler-picker');
     newCompilerEntry.picker = new CompilerPicker(
         $(newSelector[0]), this.hub, this.langId,
         config.compilerId, _.bind(onCompilerChange, this)
@@ -203,7 +203,7 @@ Conformance.prototype.addCompilerPicker = function (config) {
     var getCompilerConfig = _.bind(function () {
         return Components.getCompilerWith(
             this.editorId, undefined, newCompilerEntry.optionsField.val(),
-            compilerPickerNode.value, this.langId, this.lastState.libs
+            newCompilerEntry.picker.lastCompilerId, this.langId, this.lastState.libs
         );
     }, this);
 
@@ -319,9 +319,8 @@ Conformance.prototype.compileChild = function (compilerEntry) {
             options: {
                 userArguments: compilerEntry.optionsField.val() || '',
                 filters: {},
-                compilerOptions: {produceAst: false, produceOptInfo: false},
+                compilerOptions: {produceAst: false, produceOptInfo: false, skipAsm: true},
                 libraries: [],
-                skipAsm: true,
             },
             lang: this.langId,
             files: [],
@@ -401,21 +400,27 @@ Conformance.prototype.getOverlappingLibraries = function (compilerIds) {
         return this.compilerService.findCompiler(this.langId, compilerId);
     }, this));
 
+    var libUtils = new LibUtils();
+
+    var langId = this.langId;
+
     var libraries = {};
     var first = true;
     _.forEach(compilers, function (compiler) {
         if (compiler) {
+            var filteredLibraries = libUtils.getSupportedLibraries(compiler.libsArr, langId);
+
             if (first) {
-                libraries = _.extend({}, compiler.libs);
+                libraries = _.extend({}, filteredLibraries);
                 first = false;
             } else {
                 var libsInCommon = _.intersection(_.keys(libraries),
-                    _.keys(compiler.libs));
+                    _.keys(filteredLibraries));
 
                 _.forEach(libraries, function (lib, libkey) {
                     if (libsInCommon.includes(libkey)) {
                         var versionsInCommon = _.intersection(_.keys(lib.versions),
-                            _.keys(compiler.libs[libkey].versions));
+                            _.keys(filteredLibraries[libkey].versions));
 
                         libraries[libkey].versions = _.pick(lib.versions,
                             function (version, versionkey) {
