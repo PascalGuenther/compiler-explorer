@@ -200,7 +200,8 @@ export class MultifileService {
     }
 
     public isCompatibleWithCMake(): boolean {
-        return this.compilerLanguageId === 'c++' || this.compilerLanguageId === 'c';
+        return this.compilerLanguageId === 'c++' || this.compilerLanguageId === 'c' ||
+            this.compilerLanguageId === 'fortran';
     }
 
     public setLanguageId(id: string) {
@@ -294,10 +295,18 @@ export class MultifileService {
                 return false;
             }
         } else {
-            if (file.filename === MultifileService.getDefaultMainSourceFilename(this.compilerLanguageId)) {
-                this.setAsMainSource(file.fileId);
+            if (this.compilerLanguageId === 'pascal') {
+                if (file.filename.endsWith('.dpr')) {
+                    this.setAsMainSource(file.fileId);
+                } else {
+                    return false;
+                }
             } else {
-                return false;
+                if (file.filename === MultifileService.getDefaultMainSourceFilename(this.compilerLanguageId)) {
+                    this.setAsMainSource(file.fileId);
+                } else {
+                    return false;
+                }
             }
         }
 
